@@ -1,38 +1,65 @@
-const express = require("express");
-const { Pool } = require("pg");
+const express = require('express');
+const { Pool } = require('pg');
+
 const app = express();
-const port = 8080;
+const port = process.env.PORT || 8080;
 
-// Variables de entorno
-const dbHost = process.env.DB_HOST || "localhost";
-const dbPort = process.env.DB_PORT || 5432;
-const dbName = process.env.DB_NAME || "retodb";
-const dbUser = process.env.DB_USER || "reto_user";
-const dbPassword = process.env.DB_PASSWORD || "reto_pass";
-
-// Conexión a Postgres
+// Pool de conexión a la BD usando las vars de entorno
 const pool = new Pool({
-  host: dbHost,
-  port: dbPort,
-  user: dbUser,
-  password: dbPassword,
-  database: dbName,
+  host: process.env.DB_HOST,     // database-svc
+  port: process.env.DB_PORT,     // 5432
+  database: process.env.DB_NAME, // retodb
+  user: process.env.DB_USER,     // reto_user
+  password: process.env.DB_PASSWORD, // reto_pass
 });
 
-app.get("/mensaje", async (req, res) => {
+// Función para inicializar la BD (crear tabla y registro si no existen)
+async function initDb() {
+  // 1) Crear tabla si no existe
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS mensajes (
+      id SERIAL PRIMARY KEY,
+      texto VARCHAR(255)
+    )
+  `);
+
+  // 2) Comprobar si ya hay datos
+  const res = await pool.query('SELECT COUNT(*) AS total FROM mensajes');
+  const total = parseInt(res.rows[0].total, 10);
+
+  // 3) Si está vacía, insertar un mensaje por defecto
+  if (total === 0) {
+    await pool.query(
+      'INSERT INTO mensajes (texto) VALUES ($1)',
+      ['Hola desde backend-data (mensaje traído desde PostgreSQL)']
+    );
+  }
+
+  console.log('Base de datos inicializada correctamente');
+}
+
+// Endpoint que leerá el mensaje desde la BD
+app.get('/mensaje', async (req, res) => {
   try {
-    const result = await pool.query("SELECT texto FROM mensajes LIMIT 1");
-    if (result.rows.length > 0) {
-      res.json({ texto: result.rows[0].texto });
-    } else {
-      res.json({ texto: "No hay mensaje en la base de datos aún." });
+    const result = await pool.query(
+      'SELECT texto FROM mensajes ORDER BY id LIMIT 1'
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ texto: 'No hay mensajes en la base de datos.' });
     }
+
+    res.json({ texto: result.rows[0].texto });
   } catch (err) {
-    console.error("Error al consultar DB:", err);
-    res.json({ texto: "Error al conectar con la base de datos." });
+    console.error('Error consultando la BD:', err);
+    res.status(500).json({ texto: 'Error al consultar la base de datos.' });
   }
 });
 
+// Arrancar servidor y luego inicializar la BD
 app.listen(port, () => {
-  console.log(`Backend-data escuchando en puerto ${port}`);
+  console.log(`backend-data escuchando en puerto ${port}`);
+  initDb().catch(err => {
+    console.error('Error inicializando la BD:', err);
+  });
 });
