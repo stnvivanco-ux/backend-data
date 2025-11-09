@@ -14,12 +14,12 @@ env:
   - name: ROLE
     value: backend-data
   - name: DB_HOST
-    value: database
+    value: "database-svc"
   - name: DB_PORT
     value: "5432"
   - name: DB_NAME
-    value: retodb
+    value: "retodb"
   - name: DB_USER
-    value: reto_user
+    value: "reto_user"
   - name: DB_PASSWORD
-    value: reto_pass
+    value: "reto_pass"
