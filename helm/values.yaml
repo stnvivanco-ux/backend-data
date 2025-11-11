@@ -4,22 +4,14 @@ app:
   name: backend-data
   role: backend-data
   image: savivancofi/backend-data
-  tag: v2
+  tag: v1
   replicas: 1
-  containerPort: 8080
-  servicePort: 8080
+  containerPort: 8081
+  servicePort: 8081
   createRoute: false
 
-env:
-  - name: ROLE
-    value: backend-data
-  - name: DB_HOST
-    value: "database-svc"
-  - name: DB_PORT
-    value: "5432"
-  - name: DB_NAME
-    value: "retodb"
-  - name: DB_USER
-    value: "reto_user"
-  - name: DB_PASSWORD
-    value: "reto_pass"
+envFrom:
+  - configMapRef:
+      name: backend-data-config
+  - secretRef:
+      name: database-secret
